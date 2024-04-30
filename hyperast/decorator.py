@@ -1,5 +1,5 @@
-from typing import List, Tuple, Callable
-from dataclasses import dataclass, field
+from typing import Callable
+from hyperast.builder import Builder
 
 ################################################################################
 # inspection functions
@@ -12,54 +12,6 @@ def arity(f: Callable):
         if param.kind in [param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD] and param.default is param.empty
     )
     return positional_args
-
-################################################################################
-# Hypegraph builder class
-
-@dataclass
-class Builder:
-    nodes: List = field(default_factory=list)
-    edges: List = field(default_factory=list)
-
-    # a quotienting of hypernodes
-    quotient: List[Tuple[int, int]] = field(default_factory=list)
-
-    _source: List[int] = field(default_factory=list)
-    _target: List[int] = field(default_factory=list)
-
-    @property
-    def source(self):
-        return self._source
-
-    @source.setter
-    def source(self, s):
-        assert (x <= n for x in s)        
-        self._source = s
-
-    @property
-    def target(self):
-        return self._target
-
-    @target.setter
-    def target(self, s):
-        assert (x <= n for x in s)        
-        self._target= s
-
-    def node(self, label=None):
-        i = len(self.nodes)
-        self.nodes.append((i, label))
-        return i
-
-    def edge(self, targets, label=None):
-        i = len(self.edges)
-        # TODO!
-        self.edges.append(None)
-        return i 
-
-    def unify(self, *args):
-        n = len(self.nodes)
-        assert all(x < n for x in args)
-        self.quotient.extend(*args)
 
 ################################################################################
 # Interface module
@@ -77,9 +29,14 @@ def edge(*args, **kwargs):
     global builder
     return builder.edge(*args, **kwargs)
 
+def operation(*args, **kwargs):
+    global builder
+    return builder.operation(*args, **kwargs)
+
 def unify(*args):
-    """ Unify a number of variables """
-    pass
+    """ Unify a number of nodes by adding to the quotient graph """
+    global builder
+    builder.unify(*args)
 
 # decorator
 def hypergraph(f: Callable):
@@ -97,7 +54,7 @@ def hypergraph(f: Callable):
             source = [ builder.node() for x in range(arity(f)) ]
             builder.source = source
             target = f(*source, **kwargs) # get targets by running the function
-            builder.target = target
+            builder.target = [] if target is None else target
 
             # finally, unset builder and return
             result = builder
