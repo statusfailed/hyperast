@@ -8,8 +8,13 @@ from dataclasses import dataclass, field
 class Node:
     id: int
     label: Any = None
+    builder: 'Builder' = None
 
-    # TODO: overload operators
+    def __add__(self, other):
+        raise NotImplementedError("TODO")
+
+    def __mul__(self, other):
+        raise NotImplementedError("TODO")
 
 @dataclass
 class Edge:
@@ -19,7 +24,7 @@ class Edge:
 
 @dataclass
 class Builder:
-    # a list of Node
+    # a list of Node (wrapped because we need to __add__ and __mul__ etc. nodes)
     nodes: List = field(default_factory=list)
 
     # a list of Edge
@@ -37,7 +42,7 @@ class Builder:
 
     @source.setter
     def source(self, s):
-        assert (x <= n for x in s)        
+        assert (x <= n for x in s)
         self._source = s
 
     @property
@@ -46,13 +51,12 @@ class Builder:
 
     @target.setter
     def target(self, s):
-        assert (x <= n for x in s)        
+        assert (x <= n for x in s)
         self._target= s
 
     def node(self, label=None):
         i = len(self.nodes)
-        # TODO: pass a self ref to Node.
-        node = Node(i, label=label)
+        node = Node(i, label=label, builder=self)
         self.nodes.append(node)
         return node
 
@@ -60,7 +64,7 @@ class Builder:
         # for integers (arities) return unlabeled nodes
         if type(obj) is int:
             return [ self.node() for _ in range(obj) ]
-        
+
         # otherwise label according to obj
         return [ self.node(label=x) for x in obj ]
 
@@ -81,9 +85,26 @@ class Builder:
     def var(self, *args, **kwargs):
         return self.edge(*args, **kwargs)
 
-    def operation(self, sources, source_type=None, target_type=None, label=None):
+    def operation(self, sources, target_type, source_type=None, label=None):
+        """ Create an operation from its sources and a specified target type.
+        Optionally specify:
+            - edge label
+            - source_type (whose length must match ``sources``.)
+
+        NOTE: this creates twice as many nodes as we "need" - this lets us
+        detect type errors when an operation's source/target doesn't match those
+        passed in.
+        """
+
+        if source_type:
+            assert len(sources) == len(source_type)
+        else:
+            source_type = [ self.nodes[i].label for i in sources ]
+
+        # create an edge with the same number of sources/targets
         e_sources, e_targets = self.edge(source_type, target_type, label)
 
+        # unify the boundary sources/targets with the edge sources/targets
         targets = [ self.node() for _ in range(len(e_targets)) ]
         for a, b in zip(sources, e_sources):
             self.unify(a, b)

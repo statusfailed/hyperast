@@ -79,7 +79,7 @@ def mimo_edge():
 
 # "builder.edge" is a very low-level interface; it only adds the edge, but
 # doesn't connect it to any other nodes.
-def test_mimo():
+def test_mimo_edge():
     builder = mimo_edge()
     # TODO: this should be 8? Let's do these by quotienting.
     assert len(builder.nodes) == 4 # TODO! should be 8!
@@ -90,14 +90,15 @@ def test_mimo():
 # OTOH, "op" is a more "function-like" interface:
 @hypergraph
 def mimo_operation(x0, x1):
-    y0, y1 = operation([x0, x1], source_type=['A₀', 'A₁'], target_type=['B₀', 'B₁'], label='mimo')
+    y0, y1 = operation([x0, x1], target_type=['B₀', 'B₁'], source_type=['A₀', 'A₁'], label='mimo')
+    return [y0, y1]
 
 # 'op' is a higher level interface that creates both the edge, and copies of nodes for each input and output.
 # these copies are passed as input args, and returned as output args.
-def test_mimo():
+def test_mimo_operation():
     builder = mimo_operation()
-    # TODO: this should be 8? Let's do these by quotienting.
-    assert len(builder.nodes) == 8 # TODO! should be 8!
+    assert len(builder.nodes) == 8
     assert len(builder.edges) == 1
-    assert builder.source == []
-    assert builder.target == []
+    # NOTE: these two assertions are very implementation dependent!
+    assert [ x.id for x in builder.source ] == [0, 1] # created first
+    assert [ x.id for x in builder.target ] == [6, 7] # created last
