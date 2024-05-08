@@ -17,4 +17,6 @@ builder = adder()
 print(builder)
 
 h = builder.to_open_hypergraph()
-print(to_python(FunctionDefinition.from_open_hypergraph(h)))
+f, code = to_python(FunctionDefinition.from_open_hypergraph(h))
+print(code)
+print(f"{f(2, 3)=}")

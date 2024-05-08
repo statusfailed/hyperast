@@ -1,4 +1,5 @@
 """ Python codegen (emit strings) """
+from typing import Tuple, Callable
 
 from examples.ast import Apply, FunctionDefinition
 from examples.polycirc.signature import *
@@ -33,12 +34,22 @@ def op_to_expr(a: Apply):
             return "Unknown operation"
 
 
-def to_python(fn: FunctionDefinition, fn_name='fn'):
+def _to_function(code: str, name: str):
+    # Create a local dictionary to execute the code and capture the function definition
+    env = {}
+    exec(code, {}, env)
+
+    # Retrieve the function object using its name from the local dictionary
+    return env[name]
+
+def to_python(fn: FunctionDefinition, fn_name='fn') -> Tuple[str, Callable]:
     args = ", ".join(f"x{i}" for i in fn.args)
     returns = ", ".join(f"x{i}" for i in fn.returns)
     assignments = "\n".join(f"    {op_to_expr(a)}" for a in fn.body)
-    return FUNCTION_TEMPLATE.format(
+    code = FUNCTION_TEMPLATE.format(
             fn_name=fn_name,
             args=args,
             assignments=assignments,
             returns=returns)
+
+    return _to_function(code, fn_name), code
