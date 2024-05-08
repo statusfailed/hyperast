@@ -89,14 +89,22 @@ def test_mimo_edge():
 
 # OTOH, "op" is a more "function-like" interface:
 @hypergraph
-def mimo_operation(x0, x1):
-    y0, y1 = operation([x0, x1], target_type=['B₀', 'B₁'], source_type=['A₀', 'A₁'], label='mimo')
+def mimo_operation(x0, x1, source_type=['A₀', 'A₁']):
+    y0, y1 = operation([x0, x1], target_type=['B₀', 'B₁'], source_type=source_type, label='mimo')
     return [y0, y1]
 
 # 'op' is a higher level interface that creates both the edge, and copies of nodes for each input and output.
 # these copies are passed as input args, and returned as output args.
 def test_mimo_operation():
     builder = mimo_operation()
+    assert len(builder.nodes) == 8
+    assert len(builder.edges) == 1
+    # NOTE: these two assertions are very implementation dependent!
+    assert [ x.id for x in builder.source ] == [0, 1] # created first
+    assert [ x.id for x in builder.target ] == [6, 7] # created last
+
+def test_mimo_operation_untyped():
+    builder = mimo_operation(source_type=None)
     assert len(builder.nodes) == 8
     assert len(builder.edges) == 1
     # NOTE: these two assertions are very implementation dependent!

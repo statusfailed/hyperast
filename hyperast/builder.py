@@ -1,5 +1,9 @@
+import ast
 from typing import Any, List, Tuple
 from dataclasses import dataclass, field
+
+import numpy as np
+from open_hypergraphs import FiniteFunction, IndexedCoproduct, Hypergraph, OpenHypergraph
 
 ################################################################################
 # Hypegraph builder class
@@ -8,13 +12,13 @@ from dataclasses import dataclass, field
 class Node:
     id: int
     label: Any = None
-    builder: 'Builder' = None
+    builder: 'Builder' = field(repr=False, default=None)
 
     def __add__(self, other):
-        raise NotImplementedError("TODO")
+        return self.builder.operation([self, other], 1, label=ast.Add())
 
     def __mul__(self, other):
-        raise NotImplementedError("TODO")
+        return self.builder.operation([self, other], 1, label=ast.Mul())
 
 @dataclass
 class Edge:
@@ -50,9 +54,9 @@ class Builder:
         return self._target
 
     @target.setter
-    def target(self, s):
-        assert (x <= n for x in s)
-        self._target= s
+    def target(self, t):
+        assert (x <= n for x in t)
+        self._target = t
 
     def node(self, label=None):
         i = len(self.nodes)
@@ -85,7 +89,7 @@ class Builder:
     def var(self, *args, **kwargs):
         return self.edge(*args, **kwargs)
 
-    def operation(self, sources, target_type, source_type=None, label=None):
+    def operation(self, sources: List[Node], target_type, source_type=None, label=None):
         """ Create an operation from its sources and a specified target type.
         Optionally specify:
             - edge label
@@ -96,13 +100,14 @@ class Builder:
         passed in.
         """
 
-        if source_type:
-            assert len(sources) == len(source_type)
-        else:
-            source_type = [ self.nodes[i].label for i in sources ]
+        if source_type is None:
+            source_type = [ node.label for node in sources ]
 
         # create an edge with the same number of sources/targets
         e_sources, e_targets = self.edge(source_type, target_type, label)
+
+        if len(e_sources) != len(sources):
+            raise ValueError("operation had arity {len(e_sources)} but was given {len(sources)} args")
 
         # unify the boundary sources/targets with the edge sources/targets
         targets = [ self.node() for _ in range(len(e_targets)) ]
@@ -112,3 +117,49 @@ class Builder:
             self.unify(a, b)
 
         return targets
+
+    def to_coequalizer(self):
+        """ Represent the unification graph as a pair of parallel arrows representing source and target """
+        # f, g : N → N
+        f, g = to_graph_pairs(len(self.nodes), self.quotient)
+
+        # Quotient the tensored hypergraph H by the coequalizer of f and g to merge nodes.
+        q = f.coequalizer(g)
+        return q
+
+    def to_open_hypergraph(self) -> 'OpenHypergraph':
+        # Unquotiented hypergraph
+        nw = len(self.nodes)
+        H = Hypergraph(
+            # TODO: FIXME: Just create the IndexedCoproducts directly; don't use from_list
+            s = IndexedCoproduct.from_list(nw, [ FiniteFunction(nw, np.array([a.id for a in x.source], dtype=np.uint32)) for x in self.edges ]),
+            t = IndexedCoproduct.from_list(nw, [ FiniteFunction(nw, np.array([a.id for a in x.target], dtype=np.uint32)) for x in self.edges ]),
+            w = FiniteFunction(None, np.array([ w.label for w in self.nodes ], dtype='O')),
+            x = FiniteFunction(None, np.array([ x.label for x in self.edges ], dtype='O')))
+
+        q = self.to_coequalizer()
+        Q = H.coequalize_vertices(q)
+
+        # compute resulting sources and targets under q
+        s = FiniteFunction(nw, np.array([ a.id for a in self.source ], dtype=np.uint32))
+        t = FiniteFunction(nw, np.array([ a.id for a in self.target ], dtype=np.uint32))
+        s = s >> q
+        t = t >> q
+        return OpenHypergraph(s, t, Q)
+
+def cliques_to_pairs(cliques):
+    """ Turn a list of cliques into a list of pairs """
+    for clique in cliques:
+        if len(clique) == 0:
+            continue
+        i = clique[0] # the first item is representative
+        for j in clique[1:]:
+            yield (j, i)
+
+def to_graph_pairs(num_nodes, cliques):
+    sources, targets = zip(*cliques_to_pairs(cliques))
+    sources = np.array([a.id for a in sources], dtype=np.uint32)
+    targets = np.array([a.id for a in targets], dtype=np.uint32)
+    s = FiniteFunction(num_nodes, sources)
+    t = FiniteFunction(num_nodes, targets)
+    return s, t
