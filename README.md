@@ -2,7 +2,8 @@
 
 A (currently experimental) frontend to
 [open-hypergraphs](https://github.com/statusfailed/open-hypergraphs/)
-which lets you define open hypergraphs in a pointful style.
+which lets you define open hypergraphs in a pointful
+(i.e., not [point-free](https://en.wikipedia.org/wiki/Tacit_programming) ) style.
 Here's a 1-bit adder circuit:
 
     @hypergraph
