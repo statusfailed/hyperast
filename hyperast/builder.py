@@ -12,6 +12,7 @@ from open_hypergraphs import FiniteFunction, IndexedCoproduct, Hypergraph, OpenH
 class Node:
     id: int
     label: Any = None
+    # don't print the Builder in __repr__, this will recurse forever.
     builder: 'Builder' = field(repr=False, default=None)
 
     def __add__(self, other):
