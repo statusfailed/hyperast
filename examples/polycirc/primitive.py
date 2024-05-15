@@ -11,8 +11,11 @@
 # or
 #   def spider(*args, target=[explicit, type, here, ...]): ...
 
-# TODO: add a get_context() function to allow these to get the builder without going via @hypergraph.
+# TODO: add a get_context() function to allow these to get the builder
+#   without going via @hypergraph.
 # we can then rely on @hypergraph to annotate user context
+
+#pylint:disable = missing-function-docstring,invalid-name
 
 from hyperast import operation
 from examples.polycirc.signature import Add, Mul

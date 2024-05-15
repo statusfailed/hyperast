@@ -1,9 +1,11 @@
 """ Linearize an OpenHypergraph into a :py:class:`FunctionDefinition`, which is
 like a "flattened AST".
 """
-import numpy as np
+#pylint:disable=invalid-name
+
 from typing import List
 from dataclasses import dataclass
+import numpy as np
 
 from open_hypergraphs import FiniteFunction, OpenHypergraph
 from open_hypergraphs.numpy import layer
@@ -30,6 +32,7 @@ class FunctionDefinition:
     body: List[Apply]
     returns: List[int]
 
+    #pylint:disable=missing-function-docstring
     @staticmethod
     def from_open_hypergraph(f: OpenHypergraph):
         # Decompose an open hypergraph.
