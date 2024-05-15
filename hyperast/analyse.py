@@ -4,6 +4,8 @@ import ast
 import inspect
 from dataclasses import dataclass
 
+#pylint:disable = missing-function-docstring,missing-class-docstring
+
 def fn_closure(f):
     """ Return a mapping of variables in f which are bound by a closure """
     freevars = f.__code__.co_freevars or []
@@ -24,13 +26,14 @@ def unindent(source_lines):
     """ Unindent source so it can be parsed to AST """
     # Find the minimum indentation (exclude empty lines)
     min_indent = min(
-        len(line) - len(line.lstrip()) 
-        for line in source_lines 
+        len(line) - len(line.lstrip())
+        for line in source_lines
         if line.strip()
     )
-    
+
     # Strip minimum indentation
-    stripped_source = [line[min_indent:] if len(line) > min_indent else line for line in source_lines]
+    stripped_source = [line[min_indent:] if len(line) > min_indent else line
+                       for line in source_lines]
     return ''.join(stripped_source)
 
 def to_ast(f):
@@ -47,15 +50,16 @@ class NameExtractor(ast.NodeVisitor):
     def __init__(self):
         self.names = []
 
+    #pylint:disable=invalid-name
     def visit_Name(self, node):
         self.names.append(node.id)
         self.generic_visit(node)
 
-def extract_names(tree):
+def extract_names(tree : ast.AST):
     # Create an instance of the visitor and walk the AST
     extractor = NameExtractor()
     extractor.visit(tree)
-    
+
     # Return the list of extracted names
     return extractor.names
 
@@ -63,7 +67,7 @@ def extract_names(tree):
 class FunctionAnalysis:
     f: Callable
     source: str
-    ast: ast.AST
+    fs_ast: ast.AST
     names: List[ast.Name]
     bindings: dict
     names: List[str]
@@ -76,7 +80,7 @@ class FunctionAnalysis:
             f=f,
             source=source,
             names=names,
-            ast=f_ast,
+            fs_ast=f_ast,
             bindings=bindings(f))
 
     def bound(self):

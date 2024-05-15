@@ -1,5 +1,8 @@
+#pylint:disable = missing-function-docstring,missing-docstring,missing-docstring
+
 import ast
-from typing import Any, List, Tuple
+from collections.abc import Sequence
+from typing import Any, Iterable, List, Tuple, TypeVar
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -8,9 +11,11 @@ from open_hypergraphs import FiniteFunction, IndexedCoproduct, Hypergraph, OpenH
 ################################################################################
 # Hypegraph builder class
 
+NodeIndex = int
+
 @dataclass
 class Node:
-    id: int
+    id: NodeIndex
     label: Any = None
     # don't print the Builder in __repr__, this will recurse forever.
     builder: 'Builder' = field(repr=False, default=None)
@@ -23,8 +28,8 @@ class Node:
 
 @dataclass
 class Edge:
-    source: List[int]
-    target: List[int]
+    source: List[NodeIndex]
+    target: List[NodeIndex]
     label: Any = None
 
 @dataclass
@@ -36,17 +41,18 @@ class Builder:
     edges: List[Edge] = field(default_factory=list)
 
     # a quotienting of hypernodes
-    quotient: List[Tuple[int, int]] = field(default_factory=list)
+    quotient: List[Tuple[NodeIndex, NodeIndex]] = field(default_factory=list)
 
-    _source: List[int] = field(default_factory=list)
-    _target: List[int] = field(default_factory=list)
+    _source: List[NodeIndex] = field(default_factory=list)
+    _target: List[NodeIndex] = field(default_factory=list)
 
     @property
     def source(self):
         return self._source
 
     @source.setter
-    def source(self, s):
+    def source(self, s: List[NodeIndex]):
+        n = len(self.nodes)
         assert (x <= n for x in s)
         self._source = s
 
@@ -55,7 +61,8 @@ class Builder:
         return self._target
 
     @target.setter
-    def target(self, t):
+    def target(self, t: List[NodeIndex]):
+        n = len(self.nodes)
         assert (x <= n for x in t)
         self._target = t
 
@@ -67,6 +74,7 @@ class Builder:
 
     def _object_to_nodes(self, obj):
         # for integers (arities) return unlabeled nodes
+        #pylint:disable=unidiomatic-typecheck
         if type(obj) is int:
             return [ self.node() for _ in range(obj) ]
 
@@ -108,7 +116,8 @@ class Builder:
         e_sources, e_targets = self.edge(source_type, target_type, label)
 
         if len(e_sources) != len(sources):
-            raise ValueError("operation had arity {len(e_sources)} but was given {len(sources)} args")
+            raise ValueError(
+                "operation had arity {len(e_sources)} but was given {len(sources)} args")
 
         # unify the boundary sources/targets with the edge sources/targets
         targets = [ self.node() for _ in range(len(e_targets)) ]
@@ -120,7 +129,10 @@ class Builder:
         return targets
 
     def to_coequalizer(self):
-        """ Represent the unification graph as a pair of parallel arrows representing source and target """
+        """
+        Represent the unification graph as a pair of
+        parallel arrows representing source and target
+        """
         # f, g : N → N
         f, g = to_graph_pairs(len(self.nodes), self.quotient)
 
@@ -131,14 +143,22 @@ class Builder:
     def to_open_hypergraph(self) -> 'OpenHypergraph':
         # Unquotiented hypergraph
         nw = len(self.nodes)
+        #pylint:disable=invalid-name
         H = Hypergraph(
             # TODO: FIXME: Just create the IndexedCoproducts directly; don't use from_list
-            s = IndexedCoproduct.from_list(nw, [ FiniteFunction(nw, np.array([a.id for a in x.source], dtype=np.uint32)) for x in self.edges ]),
-            t = IndexedCoproduct.from_list(nw, [ FiniteFunction(nw, np.array([a.id for a in x.target], dtype=np.uint32)) for x in self.edges ]),
+            #pylint:disable=line-too-long
+            s = IndexedCoproduct.from_list(nw,
+                                           [ FiniteFunction(nw,np.array([a.id for a in x.source], dtype=np.uint32))
+                                            for x in self.edges ]),
+            #pylint:disable=line-too-long
+            t = IndexedCoproduct.from_list(nw,
+                                           [ FiniteFunction(nw, np.array([a.id for a in x.target], dtype=np.uint32))
+                                            for x in self.edges ]),
             w = FiniteFunction(None, np.array([ w.label for w in self.nodes ], dtype='O')),
             x = FiniteFunction(None, np.array([ x.label for x in self.edges ], dtype='O')))
 
         q = self.to_coequalizer()
+        #pylint:disable=invalid-name
         Q = H.coequalize_vertices(q)
 
         # compute resulting sources and targets under q
@@ -148,16 +168,18 @@ class Builder:
         t = t >> q
         return OpenHypergraph(s, t, Q)
 
-def cliques_to_pairs(cliques):
+T = TypeVar("T")
+def cliques_to_pairs(cliques : Iterable[Sequence[T]]):
     """ Turn a list of cliques into a list of pairs """
     for clique in cliques:
         if len(clique) == 0:
             continue
-        i = clique[0] # the first item is representative
-        for j in clique[1:]:
-            yield (j, i)
+        representative = clique[0] # the first item is representative
+        for also_in_clique in clique[1:]:
+            yield (also_in_clique, representative)
 
-def to_graph_pairs(num_nodes, cliques):
+def to_graph_pairs(num_nodes: int, cliques : List[Tuple[NodeIndex,NodeIndex]]) -> \
+    Tuple[FiniteFunction,FiniteFunction]:
     sources, targets = zip(*cliques_to_pairs(cliques))
     sources = np.array([a.id for a in sources], dtype=np.uint32)
     targets = np.array([a.id for a in targets], dtype=np.uint32)
