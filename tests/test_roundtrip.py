@@ -29,7 +29,7 @@ def test_adder():
             fn_name="fn",
             args="x0, x1",
             assignments="\n".join(["    x2 = x0 + x1","    x3 = x0 * x1"]),
-            returns="x3, x2")
+            returns="x2, x3")
     assert expected_source_code == source_code
     N_MAX = 50
     for _ in range(100):
