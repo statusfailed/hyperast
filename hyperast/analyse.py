@@ -55,7 +55,7 @@ class NameExtractor(ast.NodeVisitor):
         self.names.append(node.id)
         self.generic_visit(node)
 
-def extract_names(tree):
+def extract_names(tree : ast.AST):
     # Create an instance of the visitor and walk the AST
     extractor = NameExtractor()
     extractor.visit(tree)

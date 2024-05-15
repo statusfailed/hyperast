@@ -1,7 +1,8 @@
 #pylint:disable = missing-function-docstring,missing-docstring,missing-docstring
 
 import ast
-from typing import Any, List, Tuple
+from collections.abc import Sequence
+from typing import Any, Iterable, List, Tuple, TypeVar
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -10,9 +11,11 @@ from open_hypergraphs import FiniteFunction, IndexedCoproduct, Hypergraph, OpenH
 ################################################################################
 # Hypegraph builder class
 
+NodeIndex = int
+
 @dataclass
 class Node:
-    id: int
+    id: NodeIndex
     label: Any = None
     # don't print the Builder in __repr__, this will recurse forever.
     builder: 'Builder' = field(repr=False, default=None)
@@ -25,8 +28,8 @@ class Node:
 
 @dataclass
 class Edge:
-    source: List[int]
-    target: List[int]
+    source: List[NodeIndex]
+    target: List[NodeIndex]
     label: Any = None
 
 @dataclass
@@ -38,17 +41,18 @@ class Builder:
     edges: List[Edge] = field(default_factory=list)
 
     # a quotienting of hypernodes
-    quotient: List[Tuple[int, int]] = field(default_factory=list)
+    quotient: List[Tuple[NodeIndex, NodeIndex]] = field(default_factory=list)
 
-    _source: List[int] = field(default_factory=list)
-    _target: List[int] = field(default_factory=list)
+    _source: List[NodeIndex] = field(default_factory=list)
+    _target: List[NodeIndex] = field(default_factory=list)
 
     @property
     def source(self):
         return self._source
 
     @source.setter
-    def source(self, s):
+    def source(self, s: List[NodeIndex]):
+        n = len(self.nodes)
         assert (x <= n for x in s)
         self._source = s
 
@@ -57,7 +61,8 @@ class Builder:
         return self._target
 
     @target.setter
-    def target(self, t):
+    def target(self, t: List[NodeIndex]):
+        n = len(self.nodes)
         assert (x <= n for x in t)
         self._target = t
 
@@ -163,16 +168,18 @@ class Builder:
         t = t >> q
         return OpenHypergraph(s, t, Q)
 
-def cliques_to_pairs(cliques):
+T = TypeVar("T")
+def cliques_to_pairs(cliques : Iterable[Sequence[T]]):
     """ Turn a list of cliques into a list of pairs """
     for clique in cliques:
         if len(clique) == 0:
             continue
-        i = clique[0] # the first item is representative
-        for j in clique[1:]:
-            yield (j, i)
+        representative = clique[0] # the first item is representative
+        for also_in_clique in clique[1:]:
+            yield (also_in_clique, representative)
 
-def to_graph_pairs(num_nodes, cliques):
+def to_graph_pairs(num_nodes: int, cliques : List[Tuple[NodeIndex,NodeIndex]]) -> \
+    Tuple[FiniteFunction,FiniteFunction]:
     sources, targets = zip(*cliques_to_pairs(cliques))
     sources = np.array([a.id for a in sources], dtype=np.uint32)
     targets = np.array([a.id for a in targets], dtype=np.uint32)

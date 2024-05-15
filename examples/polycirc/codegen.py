@@ -19,7 +19,7 @@ def op_to_expr(a: Apply):
     lhs = a.lhs
     rhs = a.rhs
     lhs_str = ", ".join(f"x{i}" for i in a.lhs)
-    match a.op:
+    match a.op():
         case Constant(x):
             return str(x)
         case Add():

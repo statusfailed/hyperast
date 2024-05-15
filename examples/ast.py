@@ -3,19 +3,33 @@ like a "flattened AST".
 """
 #pylint:disable=invalid-name
 
-from typing import List
+from typing import List, Self
 from dataclasses import dataclass
 import numpy as np
 
-from open_hypergraphs import FiniteFunction, OpenHypergraph
-from open_hypergraphs.numpy import layer
+DEBUGGING_WITHOUT_OPEN_HYPERGRAPH = True
 
+if DEBUGGING_WITHOUT_OPEN_HYPERGRAPH:
+    #pylint:disable=too-few-public-methods,missing-class-docstring,missing-function-docstring
+    class FiniteFunction:
+        def argsort(self) -> Self:
+            return self
+    class OpenHypergraph:
+        pass
+    #pylint:disable=missing-function-docstring,unused-argument
+    def layer(f: OpenHypergraph):
+        return FiniteFunction(), []
+else:
+    from open_hypergraphs import FiniteFunction, OpenHypergraph
+    from open_hypergraphs.numpy import layer
+
+#pylint:disable=wrong-import-position
 from examples.polycirc.signature import operation
 
 # An `Apply` represents the application of some operation to arguments lhs and rhs.
 @dataclass
 class Apply:
-    """ The application of an operation of a given type to some arguments (lhs)
+    """ The application of an operation of a given type to some arguments (rhs)
     producing some return values (lhs) """
     op: operation # the operation itself
     source: FiniteFunction # source type
